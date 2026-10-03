@@ -15,7 +15,7 @@ $taskSource = Split-Path -Parent $PSScriptRoot
 $taskPackage = Get-Content -LiteralPath (Join-Path $taskSource 'package.json') -Raw | ConvertFrom-Json
 if ($taskPackage.version -notmatch '-rc\.') { throw '此安装器仅接受候选版本；不会切换正式入口' }
 $taskNode = (Get-Command node -ErrorAction Stop).Source
-$taskMajor = & $taskNode -p 'process.versions.node.split(".")[0]'
+$taskMajor = & $taskNode -p "process.versions.node.split('.')[0]"
 if ($LASTEXITCODE -ne 0 -or [int]$taskMajor -lt 20) { throw '需要 Node.js >=20（建议 >=22）及 npm，安装后重新打开终端' }
 $taskNpmName = if ($env:OS -eq 'Windows_NT') { 'npm.cmd' } else { 'npm' }
 $taskNpm = (Get-Command $taskNpmName -ErrorAction Stop).Source
