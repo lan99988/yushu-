@@ -1,0 +1,15 @@
+node_modules/
+local/
+private/
+runtime/
+*.log
+*.mp3
+*.mp4
+*.m4a
+*.wav
+.env
+.env.*
+!.env.example
+.agents/
+.codex/
+.workbuddy/
