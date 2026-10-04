@@ -18,7 +18,7 @@ function downloadHeaders(media){
  if(headers.Referer){if(typeof headers.Referer!=='string'||/[\r\n\0]/.test(headers.Referer))fail('INVALID_MEDIA_HEADERS','媒体Referer格式无效');validateSource(headers.Referer,true);const ref=new URL(headers.Referer);ref.search='';ref.hash='';headers.Referer=ref.href;}
  return headers;
 }
-function executableOnPath(name){const r=spawnSync(process.platform==='win32'?'where.exe':'which',[name],{encoding:'utf8',windowsHide:true});return r.status===0?r.stdout.trim().split(/\r?\n/)[0]:null;}
+function executableOnPath(name){const exts=process.platform==='win32'?['.exe','.cmd','.bat','']:[''];for(const dir of (process.env.PATH||'').split(process.platform==='win32'?';':':')){if(!dir||!dir.trim())continue;for(const ext of exts){try{const p=path.join(dir.trim(),name+ext);if(fs.existsSync(p)&&fs.statSync(p).isFile())return p;}catch(_){}}}return null;}
 function classifyDownloadError(stderr='',timedOut=false){
  const rules=[['CAPTCHA_REQUIRED','captcha',/captcha|not a bot|verify you are human|验证码/i,'人工验证后恢复'],['RATE_LIMITED','rate_limit',/429|too many requests|rate.?limit/i,'等待限流解除'],['LOGIN_REQUIRED','login',/sign in|log.?in|authentication|401|登录|fresh cookies|cookies.{0,80}(?:needed|required)/i,'登录对应来源站点'],['MEDIA_EXPIRED','media_expired',/expired|expiration|已过期/i,'刷新解析地址'],['ACCESS_DENIED','access_denied',/403|forbidden|geo.?restrict/i,'尝试其他媒体候选'],['PARSER_UNSUPPORTED','unsupported',/unsupported url|no suitable extractor|not supported|no video formats found/i,'使用专用适配器或 ParseVideo'],['NETWORK_TIMEOUT','network_timeout',/timed? ?out|timeout|connection|network|resolve host/i,'检查网络后恢复']];
  if(timedOut)return{code:'DOWNLOAD_TIMEOUT',category:'network_timeout',next_action:'检查网络后恢复'};
