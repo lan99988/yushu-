@@ -118,7 +118,7 @@ JSON请求示例：
 | submission_unknown或远端身份未明 | 不再次提交；恢复原job并人工核对听悟记录 |
 | 5分钟无转写正文 | 稍后恢复同一job，不杀掉未知提交、不新建任务 |
 | 下载中断、失效或无音轨 | 按错误分类重新取得并验证媒体 |
-| 小红书error_code=300012 | 当前候选未验收，在正常访问网络恢复后再测 |
+| 小红书error_code=300012 | 机房IP被风控（登录不豁免），需住宅网络重测，见[诊断记录](references/xhs-ip-risk-300012.md) |
 
 详见[便携安装](references/portable-install.md)和[恢复规则](references/reliability.md)。doctor只检查工具依赖；真实登录和完整取稿需要在线逐项验收。
 
