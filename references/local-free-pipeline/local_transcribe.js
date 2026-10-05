@@ -70,6 +70,44 @@ print(json.dumps({'ok': True, 'duration': round(len(samples) / sr, 1), 'chars': 
                   'blocks': len(lines), 'out': out_path, 'preview': plain[:150]}, ensure_ascii=False))
 `;
 
+// ── 保留期自动清理（每次转写结束后自动执行，最佳努力，失败不影响转写结果）──
+// 策略（2026-10-05 用户定稿）：媒体 3 天、转写文本 30 天、.download-* 临时目录 3 天
+function retentionCleanup() {
+  try {
+    const MEDIA = new Set(['.m4a', '.mp4', '.wav', '.mp3', '.aac', '.webm', '.flv', '.part', '.m4s']);
+    const TEXT = new Set(['.txt', '.md']);
+    const MEDIA_DAYS = 3, TEXT_DAYS = 30, TEMP_DAYS = 3;
+    const stateRoot = process.env.VTRANS_STATE_ROOT || path.join(os.homedir(), '.agent-apps/video-transcript-candidate/private');
+    const xhsDir = process.env.XHS_WORK_DIR || '';
+    const age = p => (Date.now() - fs.statSync(p).mtimeMs) / 86400000;
+    const rm = p => { try { fs.statSync(p).isDirectory() ? fs.rmSync(p, { recursive: true, force: true }) : fs.unlinkSync(p); } catch { /* ignore */ } };
+    const jobsDir = path.join(stateRoot, 'jobs');
+    if (fs.existsSync(jobsDir)) {
+      for (const job of fs.readdirSync(jobsDir)) {
+        const mediaRoot = path.join(jobsDir, job, 'media');
+        if (!fs.existsSync(mediaRoot)) continue;
+        for (const name of fs.readdirSync(mediaRoot)) {
+          const p = path.join(mediaRoot, name);
+          let d; try { d = age(p); } catch { continue; }
+          if (name.startsWith('.download-')) { if (d > TEMP_DAYS) rm(p); continue; }
+          if (MEDIA.has(path.extname(name).toLowerCase()) && d > MEDIA_DAYS) rm(p);
+        }
+      }
+    }
+    if (xhsDir && fs.existsSync(xhsDir)) {
+      for (const name of fs.readdirSync(xhsDir)) {
+        const p = path.join(xhsDir, name);
+        let st; try { st = fs.statSync(p); } catch { continue; }
+        if (!st.isFile()) continue;
+        const ext = path.extname(name).toLowerCase();
+        const d = (Date.now() - st.mtimeMs) / 86400000;
+        if (MEDIA.has(ext) && d > MEDIA_DAYS) rm(p);
+        else if (TEXT.has(ext) && d > TEXT_DAYS) rm(p);
+      }
+    }
+  } catch { /* 清理失败不影响转写结果 */ }
+}
+
 (async () => {
   try {
     await run(FFMPEG, ['-y', '-i', input, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', tmpWav]);
@@ -79,6 +117,7 @@ print(json.dumps({'ok': True, 'duration': round(len(samples) / sr, 1), 'chars': 
     child.stderr.on('data', d => err += d);
     child.on('close', code => {
       fs.unlink(tmpWav, () => {});
+      retentionCleanup();
       if (code === 0) console.log(out.trim());
       else { console.error('转写失败 exit=' + code + '\n' + err.slice(-600)); process.exit(1); }
     });

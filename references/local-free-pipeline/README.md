@@ -70,6 +70,20 @@ node references/local-free-pipeline/local_transcribe.js video.mp4
 
 结论：本地方案定位为**兜底层**——免费、无登录、可离线，但产出需人工校对专有名词；对质量要求高的正式稿件仍走听悟渠道。
 
+## 存储与保留（2026-10-05 用户定稿，代码内自动执行）
+
+不需要外部定时器：**每次转写/下载成功结束后，脚本自动执行保留期清理**（`retentionCleanup`，最佳努力，失败不影响主流程）。
+
+| 对象 | 保留期 |
+|---|---|
+| 视频/音频媒体（mp4/m4a/wav/aac/part 等） | **3 天** |
+| 转写文本（txt/md） | **30 天** |
+| `.download-*` 中断残留临时目录 | 3 天 |
+| `job.json` 状态（KB 级，防重复提交） | 永久 |
+| sherpa-onnx 模型 | 永久（不在清理范围） |
+
+清理范围（可用环境变量覆盖）：任务媒体目录 `VTRANS_STATE_ROOT`（默认 `~/.agent-apps/video-transcript-candidate/private/jobs/*/media`）与 `XHS_WORK_DIR`（XHS-Downloader 工作目录）。手动抽查可用配套脚本 `媒体缓存清理.py`（预演模式默认，`--apply` 执行）。
+
 ## 合规提示
 
 免登录解析依赖小红书网页接口的当前行为，属灰色地带，仅适合个人低频使用；请勿用于批量抓取或商业用途。

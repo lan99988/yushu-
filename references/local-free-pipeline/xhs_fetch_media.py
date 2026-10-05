@@ -66,6 +66,45 @@ def download(url: str, dest: Path) -> None:
     raise SystemExit(f"下载失败：{MAX_RETRY} 轮重试均被拒绝（IP 风控），稍后或换网络再试")
 
 
+def retention_cleanup() -> None:
+    """保留期自动清理（每次下载结束后执行，最佳努力，失败不影响下载结果）。
+
+    策略（2026-10-05 用户定稿）：媒体 3 天、转写文本 30 天、.download-* 临时目录 3 天。
+    """
+    media_ext = {".m4a", ".mp4", ".wav", ".mp3", ".aac", ".webm", ".flv", ".part", ".m4s"}
+    text_ext = {".txt", ".md"}
+    media_days, text_days, temp_days = 3, 30, 3
+    now = time.time()
+
+    def age(p: Path) -> float:
+        return (now - p.stat().st_mtime) / 86400
+
+    def rm(p: Path) -> None:
+        try:
+            shutil.rmtree(p) if p.is_dir() else p.unlink()
+        except OSError:
+            pass
+
+    state_root = Path(os.environ.get(
+        "VTRANS_STATE_ROOT", Path.home() / ".agent-apps/video-transcript-candidate/private"))
+    jobs_dir = state_root / "jobs"
+    if jobs_dir.exists():
+        for job in jobs_dir.iterdir():
+            media_root = job / "media"
+            if not media_root.exists():
+                continue
+            for item in media_root.iterdir():
+                try:
+                    d = age(item)
+                except OSError:
+                    continue
+                if item.name.startswith(".download-"):
+                    if d > temp_days:
+                        rm(item)
+                elif item.suffix.lower() in media_ext and d > media_days:
+                    rm(item)
+
+
 def main() -> None:
     if len(sys.argv) != 3:
         raise SystemExit(__doc__)
@@ -85,6 +124,8 @@ def main() -> None:
     head = dest.read_bytes()[:12]
     if b"ftyp" not in head:
         raise SystemExit("警告：文件头不含 ftyp，可能下载到的是网页而非视频")
+
+    retention_cleanup()
 
 
 if __name__ == "__main__":
