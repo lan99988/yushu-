@@ -13,3 +13,4 @@ runtime/
 .agents/
 .codex/
 .workbuddy/
+__pycache__/
